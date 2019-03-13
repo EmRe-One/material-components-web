@@ -29,21 +29,34 @@ Foundation and Adapter. This lets us reuse Foundation code across multiple web
 platforms, e.g. React and Angular, by re-implementing only the Adapter. For now
 we've only implemented a vanilla JavaScript version of the Adapter.
 
+### TypeScript
+
+MDC Web components are written in [TypeScript](https://www.typescriptlang.org/)
+to increase developer velocity and reduce errors. Our npm releases include
+UMD JavaScript bundles, ES Modules containing ES5, and `.d.ts` typing
+declaration files for TypeScript users.
+See [Importing JS](../importing-js.md) for more information.
+
 ### Foundation
 
 The Foundation contains the business logic that best represents Material Design,
-without actually referring to any HTML elements. This lets us isolate HTML logic
-into the Adapter. Foundation has-a Adapter.
+without actually referring to any DOM elements. The Foundation delegates to Adapter
+methods for any logic requiring DOM manipulation.
 
 ### Adapter
 
 The Adapter is an interface with all the methods the Foundation needs to
 implement Material Design business logic. There can be many implementations of
-the Adapter!
+the Adapter, allowing for interoperability with different frameworks.
 
 ### Vanilla Component
 
 Instantiated with a root [element](https://developer.mozilla.org/en-US/docs/Web/API/Element),
-it creates a Foundation with a Vanilla Adapter. Vanilla Adapter implements
-Adapter and directly references the root element. It also has proxy methods for
-any Foundation method a developer needs to access.
+the Vanilla Component creates a Foundation instance with a Vanilla Adapter by
+overriding the `getDefaultFoundation` method of `MDCComponent`. The Vanilla Adapter
+implements the Adapter APIs and directly references the root element. The Vanilla
+Component also exposes proxy methods for any Foundation methods a developer needs to access.
+
+Developers who are simply interested in consuming MDC Web (i.e. not providing a
+wrapper library) should only need to interact with the Component. They should not
+need to directly access Foundation or Adapter APIs.

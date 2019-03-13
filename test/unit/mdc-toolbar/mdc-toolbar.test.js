@@ -1,42 +1,56 @@
 /**
- * Copyright 2017 Google Inc. All Rights Reserved.
+ * @license
+ * Copyright 2017 Google Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 import {assert} from 'chai';
 import bel from 'bel';
 import domEvents from 'dom-events';
 import td from 'testdouble';
+import {install as installClock} from '../helpers/clock';
 
 import {strings} from '../../../packages/mdc-toolbar/constants';
-import {MDCToolbar} from '../../../packages/mdc-toolbar';
+import {MDCToolbar} from '../../../packages/mdc-toolbar/component';
 
-function getFixture() {
+function getFixture({hasRow = true} = {}) {
+  /* eslint-disable max-len */
+  const rowEl = !hasRow ? '' : bel`
+    <div class="mdc-toolbar__row">
+      <section class="mdc-toolbar__section mdc-toolbar__section--align-start">
+        <a class="material-icons mdc-toolbar__menu-icon">menu</a>
+        <span class="mdc-toolbar__title">Title</span>
+      </section>
+      <section class="mdc-toolbar__section mdc-toolbar__section--align-end" role="toolbar">
+        <a class="material-icons mdc-toolbar__icon" aria-label="Download" alt="Download">file_download</a>
+        <a class="material-icons mdc-toolbar__icon" aria-label="Print this page" alt="Print this page">print</a>
+        <a class="material-icons mdc-toolbar__icon" aria-label="Bookmark this page" alt="Bookmark this page">bookmark</a>
+      </section>
+    </div>
+  `;
+  /* eslint-enable max-len */
+
   return bel`
     <div>
       <header class="mdc-toolbar mdc-toolbar--flexible mdc-toolbar--flexible-default-behavior">
-        <div class="mdc-toolbar__row">
-          <section class="mdc-toolbar__section mdc-toolbar__section--align-start">
-            <a class="material-icons">menu</a>
-            <span class="mdc-toolbar__title">Title</span>
-          </section>
-          <section class="mdc-toolbar__section mdc-toolbar__section--align-end" role="toolbar">
-            <a class="material-icons" aria-label="Download" alt="Download">file_download</a>
-            <a class="material-icons" aria-label="Print this page" alt="Print this page">print</a>
-            <a class="material-icons" aria-label="Bookmark this page" alt="Bookmark this page">bookmark</a>
-          </section>
-        </div>
+        ${rowEl}
       </header>
       <main class="mdc-toolbar-fixed-adjust">
       </main>
@@ -56,6 +70,26 @@ suite('MDCToolbar');
 
 test('attachTo initializes and returns an MDCToolbar instance', () => {
   assert.isOk(MDCToolbar.attachTo(getFixture()) instanceof MDCToolbar);
+});
+
+test('attachTo throws an error if required sub-element is not present', () => {
+  assert.throws(() => MDCToolbar.attachTo(getFixture({hasRow: false})));
+});
+
+test('#destroy calls destroy on all icon ripples', () => {
+  const toolbar = MDCToolbar.attachTo(getFixture());
+
+  assert.equal(toolbar.ripples_.length, 3);
+
+  toolbar.ripples_[0].destroy = td.func('destroy');
+  toolbar.ripples_[1].destroy = td.func('destroy');
+  toolbar.ripples_[2].destroy = td.func('destroy');
+
+  toolbar.destroy();
+
+  td.verify(toolbar.ripples_[0].destroy(), {times: 1});
+  td.verify(toolbar.ripples_[1].destroy(), {times: 1});
+  td.verify(toolbar.ripples_[2].destroy(), {times: 1});
 });
 
 test('adapter#hasClass returns true if the root element has specified class', () => {
@@ -90,8 +124,7 @@ test('adapter#registerScrollHandler registers the handler for scroll', () => {
   try {
     td.verify(handler(td.matchers.anything()));
   } finally {
-    // Just to be safe
-    window.removeEventListener('resize', handler);
+    window.removeEventListener('resize', handler); // Just to be safe
   }
 });
 
@@ -104,8 +137,7 @@ test('adapter#deregisterScrollHandler unlistens the handler for scroll', () => {
   try {
     td.verify(handler(td.matchers.anything()), {times: 0});
   } finally {
-    // Just to be safe
-    window.removeEventListener('resize', handler);
+    window.removeEventListener('resize', handler); // Just to be safe
   }
 });
 
@@ -117,8 +149,57 @@ test('adapter#registerResizeHandler registers the handler for window resize', ()
   try {
     td.verify(handler(td.matchers.anything()));
   } finally {
-    // Just to be safe
-    window.removeEventListener('resize', handler);
+    window.removeEventListener('resize', handler); // Just to be safe
+  }
+});
+
+test('scroll emits change event with detail object', () => {
+  const clock = installClock();
+  const {component, root} = setupTest();
+  document.body.appendChild(root);
+
+  let detail = null;
+  const handler = (evt) => detail = evt.detail;
+  component.listen(strings.CHANGE_EVENT, handler);
+
+  domEvents.emit(window, 'scroll');
+  clock.runToFrame();
+
+  try {
+    assert.ok(detail);
+    assert.sameMembers(Object.keys(detail), ['flexibleExpansionRatio']);
+
+    // Different browsers return different values, ranging from
+    // 1.0 (Chrome) to 1.28 (Headless Firefox) to 2.04 (Headless Chrome).
+    assert.isAbove(detail.flexibleExpansionRatio, 0);
+    assert.isBelow(detail.flexibleExpansionRatio, 3);
+  } finally {
+    document.body.removeChild(root);
+  }
+});
+
+test('resize emits change event with detail object', () => {
+  const clock = installClock();
+  const {component, root} = setupTest();
+  document.body.appendChild(root);
+
+  let detail = null;
+  const handler = (evt) => detail = evt.detail;
+  component.listen(strings.CHANGE_EVENT, handler);
+
+  domEvents.emit(window, 'resize');
+  clock.runToFrame();
+
+  try {
+    assert.ok(detail);
+    assert.sameMembers(Object.keys(detail), ['flexibleExpansionRatio']);
+
+    // Different browsers return different values, ranging from
+    // 1.0 (Chrome) to 1.28 (Headless Firefox) to 2.04 (Headless Chrome).
+    assert.isAbove(detail.flexibleExpansionRatio, 0);
+    assert.isBelow(detail.flexibleExpansionRatio, 3);
+  } finally {
+    document.body.removeChild(root);
   }
 });
 
@@ -131,8 +212,7 @@ test('adapter#deregisterResizeHandler unlistens the handler for window resize', 
   try {
     td.verify(handler(td.matchers.anything()), {times: 0});
   } finally {
-    // Just to be safe
-    window.removeEventListener('resize', handler);
+    window.removeEventListener('resize', handler); // Just to be safe
   }
 });
 

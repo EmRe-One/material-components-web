@@ -21,6 +21,12 @@ Floating labels display the type of input a field requires. Every Text Field and
   </li>
 </ul>
 
+## Installation
+
+```
+npm install @material/floating-label
+```
+
 ## Basic Usage
 
 ### HTML Structure
@@ -79,6 +85,7 @@ Mixin | Description
 `mdc-floating-label-shake-keyframes($modifier, $positionY, $positionX, $scale)` | Generates a CSS `@keyframes` at-rule for an invalid label shake. Used in conjunction with the `mdc-floating-label-shake-animation` mixin.
 `mdc-floating-label-shake-animation($modifier)` | Applies shake keyframe animation to label.
 `mdc-floating-label-float-position($positionY, $positionX, $scale)` | Sets position of label when floating.
+`mdc-floating-label-max-width($max-width)` | Sets the max width of the label.
 
 ## `MDCFloatingLabel` Properties and Methods
 
@@ -99,6 +106,8 @@ Method Signature | Description
 `addClass(className: string) => void` | Adds a class to the label element.
 `removeClass(className: string) => void` | Removes a class from the label element.
 `getWidth() => number` | Returns the width of the label element.
+`registerInteractionHandler(evtType: string, handler: EventListener) => void` | Registers an event listener for a given event.
+`deregisterInteractionHandler(evtType: string, handler: EventListener) => void` | Deregisters an event listener for a given event.
 
 ### `MDCFloatingLabelFoundation`
 

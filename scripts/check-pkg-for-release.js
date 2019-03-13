@@ -1,17 +1,24 @@
 /**
- * Copyright 2016 Google Inc. All Rights Reserved.
+ * @license
+ * Copyright 2016 Google Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 /**
@@ -26,33 +33,71 @@ const fs = require('fs');
 const path = require('path');
 
 const {default: traverse} = require('babel-traverse');
-const babylon = require('babylon');
+const parser = require('@babel/parser');
 const camelCase = require('camel-case');
 const cssom = require('cssom');
 const recast = require('recast');
 
-const pkg = require(path.join(process.env.PWD, process.argv[process.argv.length - 1]));
+const CLI_PACKAGE_JSON_RELATIVE_PATH = process.argv[2];
+if (!CLI_PACKAGE_JSON_RELATIVE_PATH) {
+  console.error(`Usage: node ${path.basename(process.argv[1])} packages/mdc-foo/package.json`);
+  process.exit(1);
+}
 
-const REPO_PKG = require(path.join(process.env.PWD, 'package.json'));
-const WEBPACK_CONFIG_PATH = 'webpack.config.js';
-const WEBPACK_CONFIG = require(path.join(process.env.PWD, WEBPACK_CONFIG_PATH));
-const MASTER_PKG_PATH = 'packages/material-components-web/package.json';
-const MASTER_CSS_PATH = 'packages/material-components-web/material-components-web.scss';
-const MASTER_JS_PATH = 'packages/material-components-web/index.js';
-const MASTER_PKG = require(path.join(process.env.PWD, MASTER_PKG_PATH));
+if (!new RegExp('packages/[^/]+/package.json$').test(CLI_PACKAGE_JSON_RELATIVE_PATH)) {
+  console.error(`Invalid argument: "${CLI_PACKAGE_JSON_RELATIVE_PATH}" is not a valid path to a package.json file.`);
+  console.error('Expected format: packages/mdc-foo/package.json');
+  process.exit(1);
+}
+
+const CLI_PACKAGE_JSON = require(path.resolve(CLI_PACKAGE_JSON_RELATIVE_PATH));
+const REPO_PACKAGE_JSON = require(path.resolve('package.json'));
+
+const WEBPACK_CONFIG_RELATIVE_PATH = 'webpack.config.js';
+const WEBPACK_CONFIG = require(path.resolve(WEBPACK_CONFIG_RELATIVE_PATH));
+
+const MASTER_TS_RELATIVE_PATH = 'packages/material-components-web/index.ts';
+const MASTER_CSS_RELATIVE_PATH = 'packages/material-components-web/material-components-web.scss';
+const MASTER_PACKAGE_JSON_RELATIVE_PATH = 'packages/material-components-web/package.json';
+const MASTER_PACKAGE_JSON = require(path.resolve(MASTER_PACKAGE_JSON_RELATIVE_PATH));
+
 // These few MDC packages work as foundation or utility packages, and are not
 // directly included in webpack or the material-component-web module. But they
 // are necessary since other MDC packages depend on them.
-const CSS_WHITELIST = ['base', 'animation', 'auto-init', 'rtl', 'selection-control'];
+const CSS_WHITELIST = [
+  'base',
+  'animation',
+  'auto-init',
+  'dom',
+  'feature-targeting',
+  'rtl',
+  'shape',
+];
+
+// List of packages that are intentionally not included in the MCW package's dependencies
+const NOT_MCW_DEP = [
+  'tabs', // Deprecated; CSS classes conflict with tab and tab-bar
+];
+
+const NOT_AUTOINIT = [
+  'auto-init',
+  'base',
+  'dom',
+  'icon-toggle',
+  'tab', // Only makes sense in context of tab-bar
+  'tab-indicator', // Only makes sense in context of tab-bar
+  'tab-scroller', // Only makes sense in context of tab-bar
+  'tabs', // Deprecated
+];
 
 main();
 
 function main() {
   checkPublicConfigForNewComponent();
-  if (pkg.name !== MASTER_PKG.name) {
+  if (CLI_PACKAGE_JSON.name !== MASTER_PACKAGE_JSON.name) {
     checkNameIsPresentInAllowedScope();
-    if (pkg.private) {
-      console.log('Skipping private component', pkg.name);
+    if (CLI_PACKAGE_JSON.private) {
+      console.log('Skipping private component', CLI_PACKAGE_JSON.name);
     } else {
       checkDependencyAddedInWebpackConfig();
       checkDependencyAddedInMDCPackage();
@@ -61,13 +106,13 @@ function main() {
 }
 
 function checkPublicConfigForNewComponent() {
-  if (pkg.version === '0.0.0') {
-    assert.notEqual(typeof pkg.publishConfig, 'undefined',
-      'Please add publishConfig to' + pkg.name + '\'s package.json. Consult our ' +
+  if (CLI_PACKAGE_JSON.version === '0.0.0') {
+    assert.notEqual(typeof CLI_PACKAGE_JSON.publishConfig, 'undefined',
+      'Please add publishConfig to' + CLI_PACKAGE_JSON.name + '\'s package.json. Consult our ' +
       'docs/authoring-components.md to ensure your component\'s package.json ' +
       'is well-formed.');
-    assert.equal(pkg.publishConfig.access, 'public',
-      'Please set publishConfig.access to "public" in ' + pkg.name + '\'s package.json. ' +
+    assert.equal(CLI_PACKAGE_JSON.publishConfig.access, 'public',
+      'Please set publishConfig.access to "public" in ' + CLI_PACKAGE_JSON.name + '\'s package.json. ' +
       'Consult our docs/authoring-components.md to ensure your component\'s package.json ' +
       'is well-formed.');
   }
@@ -75,8 +120,8 @@ function checkPublicConfigForNewComponent() {
 
 function checkNameIsPresentInAllowedScope() {
   const name = getPkgName();
-  assert.notEqual(REPO_PKG.config['validate-commit-msg']['scope']['allowed'].indexOf(name), -1,
-    'FAILURE: Component ' + pkg.name + ' is not added to allowed scope. Please check package.json ' +
+  assert.notEqual(REPO_PACKAGE_JSON.config['validate-commit-msg']['scope']['allowed'].indexOf(name), -1,
+    'FAILURE: Component ' + CLI_PACKAGE_JSON.name + ' is not added to allowed scope. Please check package.json ' +
     'and add ' + name + ' to config["validate-commit-msg"]["scope"]["allowed"] before commit.');
 }
 
@@ -85,7 +130,7 @@ function checkDependencyAddedInWebpackConfig() {
   checkCSSDependencyAddedInWebpackConfig();
 
   // Check if js component has been added to webpack config
-  if (typeof(pkg.main) !== 'undefined') {
+  if (typeof(CLI_PACKAGE_JSON.main) !== 'undefined') {
     checkJSDependencyAddedInWebpackConfig();
   }
 }
@@ -94,10 +139,10 @@ function checkJSDependencyAddedInWebpackConfig() {
   const jsconfig = WEBPACK_CONFIG.find((value) => {
     return value.name === 'main-js-a-la-carte';
   });
-  const nameCamel = camelCase(pkg.name.replace('@material/', ''));
+  const nameCamel = camelCase(CLI_PACKAGE_JSON.name.replace('@material/', ''));
   assert.notEqual(typeof jsconfig.entry[nameCamel], 'undefined',
-    'FAILURE: Component ' + pkg.name + ' javascript dependency is not added to webpack ' +
-    'configuration. Please add ' + nameCamel + ' to ' + WEBPACK_CONFIG_PATH + '\'s js-components ' +
+    'FAILURE: Component ' + CLI_PACKAGE_JSON.name + ' javascript dependency is not added to webpack ' +
+    'configuration. Please add ' + nameCamel + ' to ' + WEBPACK_CONFIG_RELATIVE_PATH + '\'s js-components ' +
     'entry before commit.');
 }
 
@@ -107,10 +152,10 @@ function checkCSSDependencyAddedInWebpackConfig() {
     const cssconfig = WEBPACK_CONFIG.find((value) => {
       return value.name === 'main-css-a-la-carte';
     });
-    const nameMDC = pkg.name.replace('@material/', 'mdc.');
+    const nameMDC = CLI_PACKAGE_JSON.name.replace('@material/', 'mdc.');
     assert.notEqual(typeof cssconfig.entry[nameMDC], 'undefined',
-      'FAILURE: Component ' + pkg.name + ' css dependency not added to webpack ' +
-      'configuration. Please add ' + name + ' to ' + WEBPACK_CONFIG_PATH + '\'s css ' +
+      'FAILURE: Component ' + CLI_PACKAGE_JSON.name + ' css dependency not added to webpack ' +
+      'configuration. Please add ' + name + ' to ' + WEBPACK_CONFIG_RELATIVE_PATH + '\'s css ' +
       'entry before commit.');
   }
 }
@@ -127,49 +172,53 @@ function checkDependencyAddedInMDCPackage() {
 }
 
 function checkPkgDependencyAddedInMDCPackage() {
-  assert.notEqual(typeof MASTER_PKG.dependencies[pkg.name], 'undefined',
-    'FAILURE: Component ' + pkg.name + ' is not a denpendency for MDC Web. ' +
-    'Please add ' + pkg.name +' to ' + MASTER_PKG_PATH + '\' dependencies before commit.');
+  if (NOT_MCW_DEP.indexOf(getPkgName()) === -1) {
+    assert.notEqual(typeof MASTER_PACKAGE_JSON.dependencies[CLI_PACKAGE_JSON.name], 'undefined',
+      'FAILURE: Component ' + CLI_PACKAGE_JSON.name + ' is not a denpendency for MDC Web. ' +
+      'Please add ' + CLI_PACKAGE_JSON.name +' to ' + MASTER_PACKAGE_JSON_RELATIVE_PATH +
+      '\' dependencies before commit.');
+  }
 }
 
 function checkCSSDependencyAddedInMDCPackage() {
   const name = getPkgName();
   const nameMDC = `mdc-${name}`;
-  if (CSS_WHITELIST.indexOf(name) === -1) {
-    const src = fs.readFileSync(path.join(process.env.PWD, MASTER_CSS_PATH), 'utf8');
+  if (CSS_WHITELIST.indexOf(name) === -1 && NOT_MCW_DEP.indexOf(name) === -1) {
+    const src = fs.readFileSync(path.join(process.env.PWD, MASTER_CSS_RELATIVE_PATH), 'utf8');
     const cssRules = cssom.parse(src).cssRules;
-    const cssRule = path.join(pkg.name, nameMDC);
+    const cssRule = path.join(CLI_PACKAGE_JSON.name, nameMDC);
 
     assert.notEqual(typeof cssRules.find((value) => {
       return value.href === cssRule;
     }), 'undefined',
-    'FAILURE: Component ' + pkg.name + ' is not being imported in MDC Web. ' +
-    'Please add ' + name + ' to ' + MASTER_CSS_PATH + ' import rule before commit.');
+    'FAILURE: Component ' + CLI_PACKAGE_JSON.name + ' is not being imported in MDC Web. ' +
+    'Please add ' + name + ' to ' + MASTER_CSS_RELATIVE_PATH + ' import rule before commit.');
   }
 }
 
 function checkJSDependencyAddedInMDCPackage() {
-  const NOT_IMPORTED = ['animation'];
-  const NOT_AUTOINIT = ['auto-init', 'base', 'selection-control'];
+  const NOT_IMPORTED = ['animation', 'icon-toggle'];
   const name = getPkgName();
-  if (typeof(pkg.main) !== 'undefined' && NOT_IMPORTED.indexOf(name) === -1) {
-    const nameCamel = camelCase(pkg.name.replace('@material/', ''));
-    const src = fs.readFileSync(path.join(process.env.PWD, MASTER_JS_PATH), 'utf8');
+  if (typeof (CLI_PACKAGE_JSON.main) !== 'undefined' &&
+      NOT_IMPORTED.indexOf(name) === -1 &&
+      NOT_MCW_DEP.indexOf(name) === -1) {
+    const nameCamel = camelCase(CLI_PACKAGE_JSON.name.replace('@material/', ''));
+    const src = fs.readFileSync(path.join(process.env.PWD, MASTER_TS_RELATIVE_PATH), 'utf8');
     const ast = recast.parse(src, {
       parser: {
-        parse: (code) => babylon.parse(code, {sourceType: 'module'}),
+        parse: (code) => parser.parse(code, {sourceType: 'module'}),
       },
     });
     assert(checkComponentImportedAddedInMDCPackage(ast), 'FAILURE: Component ' +
-      pkg.name + ' is not being imported in MDC Web. ' + 'Please add ' + nameCamel +
-      ' to '+ MASTER_JS_PATH + ' import rule before commit.');
+      CLI_PACKAGE_JSON.name + ' is not being imported in MDC Web. ' + 'Please add ' + nameCamel +
+      ' to '+ MASTER_TS_RELATIVE_PATH + ' import rule before commit.');
     assert(checkComponentExportedAddedInMDCPackage(ast), 'FAILURE: Component ' +
-      pkg.name + ' is not being exported in MDC Web. ' + 'Please add ' + nameCamel +
-      ' to '+ MASTER_JS_PATH + ' export before commit.');
+      CLI_PACKAGE_JSON.name + ' is not being exported in MDC Web. ' + 'Please add ' + nameCamel +
+      ' to '+ MASTER_TS_RELATIVE_PATH + ' export before commit.');
     if (NOT_AUTOINIT.indexOf(name) === -1) {
       assert(checkAutoInitAddedInMDCPackage(ast) > 0, 'FAILURE: Component ' +
-        pkg.name + ' seems not being auto inited in MDC Web. ' + 'Please add ' +
-        nameCamel + ' to '+ MASTER_JS_PATH + ' autoInit statement before commit.');
+        CLI_PACKAGE_JSON.name + ' seems not being auto inited in MDC Web. ' + 'Please add ' +
+        nameCamel + ' to '+ MASTER_TS_RELATIVE_PATH + ' autoInit statement before commit.');
     }
   }
 }
@@ -180,7 +229,8 @@ function checkComponentImportedAddedInMDCPackage(ast) {
     'ImportDeclaration'({node}) {
       if (node.source) {
         const source = node.source.value;
-        if (source === pkg.name + '/index') {
+        const pkgFile = CLI_PACKAGE_JSON.name + '/index';
+        if (source === pkgFile) {
           isImported = true;
         }
       }
@@ -190,9 +240,11 @@ function checkComponentImportedAddedInMDCPackage(ast) {
 }
 
 function checkAutoInitAddedInMDCPackage(ast) {
-  let nameCamel = camelCase(pkg.name.replace('@material/', ''));
+  let nameCamel = camelCase(CLI_PACKAGE_JSON.name.replace('@material/', ''));
   if (nameCamel === 'textfield') {
     nameCamel = 'textField';
+  } else if (nameCamel === 'switch') {
+    nameCamel = 'switchControl';
   }
   let autoInitedCount = 0;
   traverse(ast, {
@@ -213,9 +265,11 @@ function checkAutoInitAddedInMDCPackage(ast) {
 }
 
 function checkComponentExportedAddedInMDCPackage(ast) {
-  let nameCamel = camelCase(pkg.name.replace('@material/', ''));
+  let nameCamel = camelCase(CLI_PACKAGE_JSON.name.replace('@material/', ''));
   if (nameCamel === 'textfield') {
     nameCamel = 'textField';
+  } else if (nameCamel === 'switch') {
+    nameCamel = 'switchControl';
   }
   let isExported = false;
   traverse(ast, {
@@ -233,7 +287,7 @@ function checkComponentExportedAddedInMDCPackage(ast) {
 }
 
 function getPkgName() {
-  let name = pkg.name.split('/')[1];
+  let name = CLI_PACKAGE_JSON.name.split('/')[1];
   if (name === 'textfield') {
     // Text-field now has a dash in the name. The package cannot be changed,
     // since it is a lot of effort to rename npm package

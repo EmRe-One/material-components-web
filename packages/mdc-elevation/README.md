@@ -37,7 +37,27 @@ Shadows provide important visual cues about objects’ depth and directional mov
 npm install @material/elevation
 ```
 
-## Usage
+## Basic Usage
+
+### HTML
+
+Elevation is often already included within the baseline styles of other components (e.g. raised buttons, elevated cards).
+
+However, you can also apply elevation to specific components using `mdc-elevation--z<N>` classes:
+
+```html
+  <div class="mdc-elevation--z1">
+    <!-- ... content ... -->
+  </div>
+```
+
+### Styles
+
+```scss
+@import "@material/elevation/mdc-elevation";
+```
+
+## Style Customization
 
 ### CSS Classes
 
@@ -63,9 +83,9 @@ Function | Description
 
 Variable | Description
 --- | ---
-`mdc-elevation-property` | Default property for elevation transitions
-`mdc-elevation-transition-duration` | Default duration value for elevation transitions
-`mdc-elevation-transition-timing-function` | Default easing value for elevation transitions
+`$mdc-elevation-property` | Default property for elevation transitions
+`$mdc-elevation-transition-duration` | Default duration value for elevation transitions
+`$mdc-elevation-transition-timing-function` | Default easing value for elevation transitions
 
 If you need more configurability over your transitions, use the `mdc-elevation-transition-value` function in conjunction with the exported sass variables.
 

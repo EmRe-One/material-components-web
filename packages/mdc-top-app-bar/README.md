@@ -51,6 +51,18 @@ npm install @material/top-app-bar
 </header>
 ```
 
+#### Menu Icons
+
+We recommend using [Material Icons](https://material.io/tools/icons/) from Google Fonts:
+
+```html
+<head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+</head>
+```
+
+However, you can also use SVG, [Font Awesome](https://fontawesome.com/), or any other icon library you wish.
+
 ### Styles
 
 ```scss
@@ -83,9 +95,9 @@ Top app bars can contain action items which are placed on the side opposite the 
       <span class="mdc-top-app-bar__title">Title</span>
     </section>
     <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end" role="toolbar">
-      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Download" alt="Download">file_download</a>
-      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Print this page" alt="Print this page">print</a>
-      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Bookmark this page" alt="Bookmark this page">bookmark</a>
+      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Download">file_download</a>
+      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Print this page">print</a>
+      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Bookmark this page">bookmark</a>
     </section>
   </div>
 </header>
@@ -103,7 +115,7 @@ Short top app bars are top app bars that can collapse to the navigation icon sid
       <span class="mdc-top-app-bar__title">Title</span>
     </section>
     <section class="mdc-top-app-bar__section mdc-top-app-bar__section--align-end" role="toolbar">
-      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Bookmark this page" alt="Bookmark this page">bookmark</a>
+      <a href="#" class="material-icons mdc-top-app-bar__action-item" aria-label="Bookmark this page">bookmark</a>
     </section>
   </div>
 </header>
@@ -141,6 +153,16 @@ The prominent top app bar is taller.
 </header>
 ```
 
+### Dense
+
+The dense top app bar is shorter.
+
+```html
+<header class="mdc-top-app-bar mdc-top-app-bar--dense">
+  ...
+</header>
+```
+
 ## Style Customization
 
 ### CSS Classes
@@ -149,9 +171,15 @@ Class | Description
 --- | ---
 `mdc-top-app-bar` | Mandatory.
 `mdc-top-app-bar--fixed` | Class used to style the top app bar as a fixed top app bar.
+`mdc-top-app-bar--fixed-adjust` | Class used to style the content below the standard and fixed top app bar to prevent the top app bar from covering it.
 `mdc-top-app-bar--prominent` | Class used to style the top app bar as a prominent top app bar.
+`mdc-top-app-bar--prominent-fixed-adjust` | Class used to style the content below the prominent top app bar to prevent the top app bar from covering it.
+`mdc-top-app-bar--dense` | Class used to style the top app bar as a dense top app bar.
+`mdc-top-app-bar--dense-fixed-adjust` | Class used to style the content below the dense top app bar to prevent the top app bar from covering it.
+`mdc-top-app-bar--dense-prominent-fixed-adjust` | Class used to style the content below the top app bar when styled as both prominent and dense, to prevent the top app bar from covering it.
 `mdc-top-app-bar--short` | Class used to style the top app bar as a short top app bar.
 `mdc-top-app-bar--short-collapsed` | Class used to indicate the short top app bar is collapsed.
+`mdc-top-app-bar--short-fixed-adjust` | Class used to style the content below the short top app bar to prevent the top app bar from covering it.
 
 ### Sass Mixins
 
@@ -161,11 +189,13 @@ Mixin | Description
 `mdc-top-app-bar-icon-ink-color($color)` | Sets the ink color of the top app bar icons.
 `mdc-top-app-bar-fill-color($color)` | Sets the fill color of the top app bar.
 `mdc-top-app-bar-fill-color-accessible($color)` | Sets the fill color of the top app bar and automatically sets a high-contrast ink color.
-`mdc-top-app-bar-short-border-radius($border-radius)` | Sets the `border-bottom-radius` property on the action item side. Used only for the short top app bar when collapsed.
+`mdc-top-app-bar-short-shape-radius($radius, $rtl-reflexive)` | Sets the rounded shape to short top app bar variant (when it is collapsed) with given radius size. Set `$rtl-reflexive` to true to flip radius values in RTL context, defaults to true.
 
 ## `MDCTopAppBar` Properties and Methods
 
-MDCTopAppBar does not contain any properties or methods aside from those inherited from MDCComponent.
+Method Signature | Description
+--- | ---
+`setScrollTarget(target: element) => void` | Sets scroll target to different DOM node (default is window).
 
 ### Events
 
@@ -181,17 +211,36 @@ If you are using a JavaScript framework, such as React or Angular, you can creat
 
 Method Signature | Description
 --- | ---
-`hasClass(className: string) => boolean` | Checks if the root element of the component has the given className.
 `addClass(className: string) => void` | Adds a class to the root element of the component.
 `removeClass(className: string) => void` | Removes a class from the root element of the component.
-`registerNavigationIconInteractionHandler(evtType: string, handler: EventListener) => void` | Registers an event listener on the native navigation icon element for a given event.
-`deregisterNavigationIconInteractionHandler(evtType: string, handler: EventListener) => void` | Deregisters an event listener on the native navigation icon element for a given event.
-`notifyNavigationIconClicked() => void` | Emits a custom event `MDCTopAppBar:nav` when the navigation icon is clicked.
-`registerScrollHandler(handler) => void` | Registers a handler to be called when user scrolls. Our default implementation adds the handler as a listener to the window's `scroll` event.
-`deregisterScrollHandler(handler) => void` | Unregisters a handler to be called when user scrolls. Our default implementation removes the handler as a listener to the window's `scroll` event.
+`hasClass(className: string) => boolean` | Checks if the root element of the component has the given className.
+`setStyle(property: string, value: string) => void` | Sets the specified CSS property to the given value on the root element.
+`getTopAppBarHeight() => number` | Gets the height in px of the top app bar.
 `getViewportScrollY() => number` | Gets the number of pixels that the content of body is scrolled from the top of the page.
 `getTotalActionItems() => number` | Gets the number of action items in the top app bar.
+`notifyNavigationIconClicked() => void` | Emits a custom event `MDCTopAppBar:nav` when the navigation icon is clicked.
+`registerNavigationIconInteractionHandler(evtType: string, handler: EventListener) => void` | Registers an event listener on the native navigation icon element for a given event.
+`deregisterNavigationIconInteractionHandler(evtType: string, handler: EventListener) => void` | Deregisters an event listener on the native navigation icon element for a given event.
+`registerScrollHandler(handler: EventListener) => void` | Registers a handler to be called when user scrolls. Our default implementation adds the handler as a listener to the window's `scroll` event.
+`deregisterScrollHandler(handler: EventListener) => void` | Unregisters a handler to be called when user scrolls. Our default implementation removes the handler as a listener to the window's `scroll` event.
+`registerResizeHandler(handler: EventListener) => void` | Registers a handler to be called when the surface (or its viewport) resizes. Our default implementation adds the handler as a listener to the window's `resize` event.
+`deregisterResizeHandler(handler: EventListener) => void` | Unregisters a handler to be called when the surface (or its viewport) resizes. Our default implementation removes the handler as a listener to the window's `resize` event.
 
-### Foundations: `MDCTopAppBarBaseFoundation`, `MDCTopAppBarFoundation`, `MDCFixedTopAppBarFoundation` and `MDCShortTopAppBarFoundation`
+### Foundations
 
-The foundations do not contain any public properties or methods aside from those inherited from MDCFoundation.
+#### `MDCTopAppBarBaseFoundation`, `MDCTopAppBarFoundation`, `MDCFixedTopAppBarFoundation` and `MDCShortTopAppBarFoundation`
+
+All foundations provide the following methods:
+
+Method Signature | Description
+--- | ---
+`initScrollHandler(handler: EventListener) => void` | Registers a scroll handler on a specific target element.
+`destroyScrollHandler(handler: EventListener) => void` | Deregisters the current scroll handler set by the foundation.
+
+#### `MDCShortTopAppBarFoundation`
+
+In addition to the methods above, the short variant provides the following public properties:
+
+Property | Value Type | Description
+--- | --- | ---
+`isCollapsed` | `boolean` (read-only) | Indicates whether the short top app bar is in the collapsed state.

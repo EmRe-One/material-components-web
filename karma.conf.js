@@ -1,17 +1,24 @@
 /**
- * Copyright 2016 Google Inc. All Rights Reserved.
+ * @license
+ * Copyright 2016 Google Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 const path = require('path');
@@ -20,76 +27,40 @@ const webpackConfig = require('./webpack.config')[0];
 const USING_TRAVISCI = Boolean(process.env.TRAVIS);
 const USING_SL = Boolean(process.env.SAUCE_USERNAME && process.env.SAUCE_ACCESS_KEY);
 
-const SL_LAUNCHERS = {
-  'sl-chrome-stable': {
-    base: 'SauceLabs',
-    browserName: 'chrome',
-    version: 'latest',
-    platform: 'macOS 10.12',
+const HEADLESS_LAUNCHERS = {
+  /** See https://github.com/travis-ci/travis-ci/issues/8836#issuecomment-348248951 */
+  'ChromeHeadlessNoSandbox': {
+    base: 'ChromeHeadless',
+    flags: ['--no-sandbox'],
   },
-  'sl-chrome-beta': {
-    base: 'SauceLabs',
-    browserName: 'chrome',
-    version: 'dev',
-    platform: 'macOS 10.12',
+  'FirefoxHeadless': {
+    base: 'Firefox',
+    flags: ['-headless'],
   },
-  'sl-chrome-previous': {
-    base: 'SauceLabs',
-    browserName: 'chrome',
-    version: 'latest-1',
-    platform: 'macOS 10.12',
-  },
-  'sl-firefox-stable': {
-    base: 'SauceLabs',
-    browserName: 'firefox',
-    version: 'latest',
-    platform: 'Windows 10',
-  },
-  'sl-firefox-previous': {
-    base: 'SauceLabs',
-    browserName: 'firefox',
-    version: 'latest-1',
-    platform: 'Windows 10',
-  },
+};
+
+const SAUCE_LAUNCHERS = {
   'sl-ie': {
     base: 'SauceLabs',
     browserName: 'internet explorer',
     version: '11',
-    platform: 'Windows 8.1',
+    platform: 'Windows 10',
   },
-  // TODO(sgomes): Re-enable Edge and Safari after Sauce Labs problems are fixed.
-  // 'sl-edge': {
-  //   base: 'SauceLabs',
-  //   browserName: 'microsoftedge',
-  //   version: 'latest',
-  //   platform: 'Windows 10',
-  // },
-  // 'sl-safari-stable': {
-  //   base: 'SauceLabs',
-  //   browserName: 'safari',
-  //   version: 'latest',
-  //   platform: 'macOS 10.12',
-  // },
-  // 'sl-safari-previous': {
-  //   base: 'SauceLabs',
-  //   browserName: 'safari',
-  //   version: '9.0',
-  //   platform: 'OS X 10.11',
-  // },
-  'sl-ios-safari-latest': {
-    base: 'SauceLabs',
-    deviceName: 'iPhone Simulator',
-    platformVersion: '10.0',
-    platformName: 'iOS',
-    browserName: 'Safari',
-  },
-  // 'sl-ios-safari-previous': {
-  //   base: 'SauceLabs',
-  //   deviceName: 'iPhone Simulator',
-  //   platformVersion: '9.3',
-  //   platformName: 'iOS',
-  //   browserName: 'Safari',
-  // },
+};
+
+const customLaunchers = Object.assign({}, USING_SL ? SAUCE_LAUNCHERS : {}, HEADLESS_LAUNCHERS);
+const browsers = USING_TRAVISCI ? Object.keys(customLaunchers) : ['Chrome'];
+const istanbulInstrumenterLoader = {
+  use: [{
+    loader: 'istanbul-instrumenter-loader',
+    options: {esModules: true},
+  }],
+  exclude: [
+    /node_modules/,
+    /adapter.[jt]s$/,
+    /constants.[jt]s$/,
+  ],
+  include: path.resolve('./packages'),
 };
 
 module.exports = function(config) {
@@ -102,48 +73,55 @@ module.exports = function(config) {
     preprocessors: {
       'test/unit/index.js': ['webpack', 'sourcemap'],
     },
-    reporters: ['dots', 'coverage'],
+    reporters: ['dots', 'coverage-istanbul'],
     port: 9876,
     colors: true,
     logLevel: config.LOG_INFO,
-    browsers: determineBrowsers(),
+    browsers: browsers,
     browserDisconnectTimeout: 40000,
     browserNoActivityTimeout: 120000,
     captureTimeout: 240000,
     concurrency: USING_SL ? 4 : Infinity,
-    customLaunchers: SL_LAUNCHERS,
+    customLaunchers: customLaunchers,
 
-    coverageReporter: {
-      dir: 'coverage',
-      reporters: [
-        {type: 'lcovonly', subdir: '.'},
-        {type: 'json', subdir: '.', file: 'coverage.json'},
-        {type: 'html'},
-      ],
+    coverageIstanbulReporter: {
+      'dir': 'coverage',
+      'reports': ['html', 'lcovonly', 'json'],
+      'report-config': {
+        lcovonly: {subdir: '.'},
+        json: {subdir: '.', file: 'coverage.json'},
+      },
+      // 'emitWarning' causes the tests to fail if the thresholds are not met
+      'emitWarning': false,
+      'thresholds': {
+        statements: 95,
+        branches: 95,
+        lines: 95,
+        functions: 95,
+      },
     },
 
     client: {
       mocha: {
         reporter: 'html',
         ui: 'qunit',
+
+        // Number of milliseconds to wait for an individual `test(...)` function to complete.
+        // The default is 2000.
+        timeout: 10000,
       },
     },
 
     webpack: Object.assign({}, webpackConfig, {
-      devtool: 'inline-source-map',
       module: Object.assign({}, webpackConfig.module, {
         // Cover source files when not debugging tests. Otherwise, omit coverage instrumenting to get
         // uncluttered source maps.
-        rules: webpackConfig.module.rules.concat([config.singleRun ? {
+        rules: webpackConfig.module.rules.concat(config.singleRun ? [Object.assign({
+          enforce: 'post',
+          test: /\.ts$/,
+        }, istanbulInstrumenterLoader), Object.assign({
           test: /\.js$/,
-          include: path.resolve('./packages'),
-          exclude: [
-            /node_modules/,
-            /adapter.js/,
-          ],
-          loader: 'istanbul-instrumenter-loader',
-          query: {esModules: true},
-        } : undefined]).filter(Boolean),
+        }, istanbulInstrumenterLoader)] : []),
       }),
     }),
 
@@ -152,23 +130,26 @@ module.exports = function(config) {
     },
   });
 
-  // See https://github.com/karma-runner/karma-sauce-launcher/issues/73
-  if (USING_TRAVISCI) {
-    config.set({
-      sauceLabs: {
+  if (USING_SL) {
+    const sauceLabsConfig = {
+      username: process.env.SAUCE_USERNAME,
+      accessKey: process.env.SAUCE_ACCESS_KEY,
+    };
+
+    if (USING_TRAVISCI) {
+      // See https://github.com/karma-runner/karma-sauce-launcher/issues/73
+      Object.assign(sauceLabsConfig, {
         testName: 'Material Components Web Unit Tests - CI',
         tunnelIdentifier: process.env.TRAVIS_JOB_NUMBER,
-        username: process.env.SAUCE_USERNAME,
-        accessKey: process.env.SAUCE_ACCESS_KEY,
         startConnect: false,
-      },
+      });
+    }
+
+    config.set({
+      sauceLabs: sauceLabsConfig,
       // Attempt to de-flake Sauce Labs tests on TravisCI.
       transports: ['polling'],
       browserDisconnectTolerance: 3,
     });
   }
 };
-
-function determineBrowsers() {
-  return USING_SL ? Object.keys(SL_LAUNCHERS) : ['Chrome'];
-}

@@ -1,17 +1,24 @@
 /**
- * Copyright 2016 Google Inc. All Rights Reserved.
+ * @license
+ * Copyright 2016 Google Inc.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
 
 import {assert} from 'chai';
@@ -19,9 +26,10 @@ import bel from 'bel';
 import domEvents from 'dom-events';
 import td from 'testdouble';
 
-import {MDCRipple} from '../../../packages/mdc-ripple';
+import {MDCRipple} from '../../../packages/mdc-ripple/index';
 import {cssClasses} from '../../../packages/mdc-ripple/constants';
 import * as util from '../../../packages/mdc-ripple/util';
+import {install as installClock} from '../helpers/clock';
 
 suite('MDCRipple');
 
@@ -106,16 +114,7 @@ test('adapter#browserSupportsCssVars delegates to util', () => {
 test('adapter#isUnbounded delegates to unbounded getter', () => {
   const {component} = setupTest();
   component.unbounded = true;
-  assert.isOk(component.getDefaultFoundation().adapter_.isUnbounded());
-});
-
-test('adapter#isSurfaceActive calls the correct :matches API method on the root element', () => {
-  const {root, component} = setupTest();
-  const MATCHES = util.getMatchesProperty(HTMLElement.prototype);
-  const matches = td.func('root.<matches>');
-  td.when(matches(':active')).thenReturn(true);
-  root[MATCHES] = matches;
-  assert.isOk(component.getDefaultFoundation().adapter_.isSurfaceActive());
+  assert.isTrue(component.getDefaultFoundation().adapter_.isUnbounded());
 });
 
 test('adapter#isSurfaceDisabled delegates to component\'s disabled getter', () => {
@@ -127,14 +126,14 @@ test('adapter#isSurfaceDisabled delegates to component\'s disabled getter', () =
 test('adapter#addClass adds a class to the root', () => {
   const {root, component} = setupTest();
   component.getDefaultFoundation().adapter_.addClass('foo');
-  assert.isOk(root.classList.contains('foo'));
+  assert.isTrue(root.classList.contains('foo'));
 });
 
 test('adapter#removeClass removes a class from the root', () => {
   const {root, component} = setupTest();
   root.classList.add('foo');
   component.getDefaultFoundation().adapter_.removeClass('foo');
-  assert.isNotOk(root.classList.contains('foo'));
+  assert.isFalse(root.classList.contains('foo'));
 });
 
 test('adapter#containsEventTarget returns true if the passed element is a descendant of the root element', () => {
@@ -221,4 +220,21 @@ test('adapter#getWindowPageOffset returns page{X,Y}Offset as {x,y} respectively'
     x: window.pageXOffset,
     y: window.pageYOffset,
   });
+});
+
+test(`handleFocus() adds class ${cssClasses.BG_FOCUSED}`, () => {
+  const clock = installClock();
+  const {root, component} = setupTest();
+  component.foundation_.handleFocus();
+  clock.runToFrame();
+  assert.isTrue(root.classList.contains(cssClasses.BG_FOCUSED));
+});
+
+test(`handleBlur() removes class ${cssClasses.BG_FOCUSED}`, () => {
+  const clock = installClock();
+  const {root, component} = setupTest();
+  root.classList.add(cssClasses.BG_FOCUSED);
+  component.foundation_.handleBlur();
+  clock.runToFrame();
+  assert.isFalse(root.classList.contains(cssClasses.BG_FOCUSED));
 });

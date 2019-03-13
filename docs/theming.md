@@ -129,9 +129,7 @@ Here's the markup:
       </div>
     </div>
     <button class="mdc-fab" id="demo-absolute-fab" aria-label="Favorite">
-      <span class="mdc-fab__icon material-icons">
-        favorite
-      </span>
+      <span class="mdc-fab__icon material-icons">favorite</span>
     </button>
   </body>
 </html>
@@ -250,6 +248,10 @@ provide, as part of the Sass definitions in `mdc-theme`. Pretty simple!
 > Note: theme colors don't have to be part of the Material palette; you can use any valid color. You may want to read
 the [color section](https://material.io/go/design-theming) in the Material Design spec to inform your pick of an
 alternative palette.
+
+If you want to go a step further with your theming then you can override any SASS variable throughout the codebase by
+redefining it in your application's SASS file. Exercise caution when doing this, however, as modifying internal variables
+may have unintended consequences.
 
 
 ### Step 4: Changing the theme with CSS Custom Properties

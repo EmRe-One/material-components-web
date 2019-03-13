@@ -139,7 +139,7 @@ If you're using already-transpiled JS:
 mdc.autoInit();
 ```
 
-If you're using ES2015:
+If you're using ES Module syntax:
 
 ```js
 import autoInit from '@material/auto-init';
@@ -161,13 +161,13 @@ See the [`@material/auto-init` README](../packages/mdc-auto-init/README.md) for 
 While auto-initialization works very well for simpler use cases, manual management of components’ lifecycles is a better
 option for complex applications that dynamically create and destroy parts of their user interface.
 
-MDC Web modules include both ES2015 sources and bundled, transpiled ES5, so you can choose the best option depending on
+MDC Web modules include both UMD and ES Module sources. Both are transpiled ES5, so you can choose the best option depending on
 your build toolchain.
 
 > **Note:** When instantiating manually, be sure to store the returned instance somewhere so that you can access it when
 you need to; unlike with auto-initialization, there is no way to retrieve it later via the DOM.
 
-#### Importing a component from ES2015 sources
+#### Importing a component from ES Module sources
 
 Start by importing the component:
 
@@ -181,13 +181,13 @@ Then instantiate it by calling the constructor on the root node:
 const textField = new MDCTextField(document.querySelector('.mdc-text-field'));
 ```
 
-> See the [Getting Started Guide](getting-started.md) for information on setting up a toolchain to transpile ES2015.
+> See the [Getting Started Guide](getting-started.md) for information on setting up a toolchain to consume ES Modules.
 
 #### Using the component class in an ES5 bundle
 
 Each MDC Web component ships with a transpiled ES5 [UMD](https://github.com/umdjs/umd) bundle, with component classes
 placed into a package-specific property inside of the `mdc` namespace. These bundles are located under the `dist`
-subdirectory in each published package, as opposed to the ES2015 sources under the root directory.
+subdirectory in each published package, as opposed to the ES Modules sources under the root directory.
 
 Aside from how the module is referenced, its usage otherwise remains the same. Instantiate a component by calling the
 constructor on the root node:
@@ -305,7 +305,7 @@ The following table summarizes the current situation (TBI = to be investigated):
 | `mdl-dialog` | [`@material/dialog`](../packages/mdc-dialog/README.md) | Sufficiently different from MDL. MDL uses the `dialog` element which has limited cross-browser support. `mdc-dialog` relies on elements with more cross-browser support. |
 | `mdl-footer` | None | Not currently planned for MDC Web. |
 | `mdl-grid` | [`@material/layout-grid`](../packages/mdc-layout-grid/README.md) | Very similar. No offsets in MDC Web. |
-| `mdl-icon-toggle` | [`@material/icon-toggle`](../packages/mdc-icon-toggle/README.md) | Very different DOM. |
+| `mdl-icon-toggle` | [`@material/icon-button`](../packages/mdc-icon-button/README.md) | Very different DOM. |
 | `mdl-layout` | Split into [`@material/drawer`](../packages/mdc-drawer/README.md), [`@material/top-app-bar`](../packages/mdc-top-app-bar/README.md), [`@material/layout-grid`](../packages/mdc-layout-grid/README.md), and [`@material/tabs`](../packages/mdc-tabs/README.md) | Different DOM and variants. |
 | `mdl-list` | [`@material/list`](../packages/mdc-list/README.md) | Very different DOM. |
 | `mdl-menu` | [`@material/menu`](../packages/mdc-menu/README.md) | Very different DOM. |
